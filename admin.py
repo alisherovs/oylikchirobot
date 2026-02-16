@@ -16,18 +16,19 @@ from aiogram.types import (
 # Ma'lumotlar bazasidan modellar
 from database import async_session, Employee, KPI, Advance, Penalty, SalaryHistory
 
-ADMIN_ID = int(os.getenv("ADMIN_ID", "1064992756"))
+ADMIN_ID = int(os.getenv("ADMIN_ID", "7044905076"))
 
 admin_router = Router()
 
-# XAVFSIZLIK FILTRI
-
+# ==========================================
+# 🔒 XAVFSIZLIK FILTRI
+# ==========================================
 admin_router.message.filter(F.from_user.id == ADMIN_ID)
 admin_router.callback_query.filter(F.from_user.id == ADMIN_ID)
 
-
-#  FSM HOLATLARI
-
+# ==========================================
+# 🧠 FSM HOLATLARI
+# ==========================================
 class ApproveFSM(StatesGroup):
     emp_id = State()
     salary_type = State()
@@ -39,9 +40,9 @@ class ActionFSM(StatesGroup):
     amount = State()
     description = State()
 
-
-# ASOSIY MENYU (PASTKI TUGMALAR)
-
+# ==========================================
+# 🎛 ASOSIY MENYU (PASTKI TUGMALAR)
+# ==========================================
 async def get_admin_menu(session):
     pending_count = len((await session.execute(select(Employee.id).where(Employee.status == "pending"))).scalars().all())
     req_text = f"📩 So'rovlar ({pending_count})" if pending_count > 0 else "📩 So'rovlar"
@@ -75,8 +76,9 @@ async def admin_start(message: types.Message, state: FSMContext):
         kb = await get_admin_menu(session)
     await message.answer("👑 <b>Admin paneliga xush kelibsiz!</b>\n\nQuyidagi menyudan foydalaning:", reply_markup=kb, parse_mode="HTML")
 
-#  SO'ROVLARNI TASDIQLASH
-
+# ==========================================
+# 1️⃣ SO'ROVLARNI TASDIQLASH
+# ==========================================
 @admin_router.message(F.text.startswith("📩 So'rovlar"))
 async def view_requests(message: types.Message, state: FSMContext):
     await state.clear()
@@ -125,8 +127,9 @@ async def approve_step3(message: types.Message, state: FSMContext):
     except: pass
     await state.clear()
 
-#  AMALLAR: PREMIYA, AVANS, JARIMA
-
+# ==========================================
+# 2️⃣ AMALLAR: PREMIYA, AVANS, JARIMA
+# ==========================================
 @admin_router.message(F.text.in_(["📈 Mukofot pullari (Premiya)", "💸 Avans berish", "⚠️ Jarima yozish"]))
 async def select_action_emp(message: types.Message, state: FSMContext):
     await state.clear()
@@ -174,6 +177,9 @@ async def save_action(message: types.Message, state: FSMContext):
             session.add(Penalty(employee_id=emp_id, amount=amount, reason=message.text))
             text_type = "jarima yozildi ⚠️"
         
+        # MANA SHU QATOR TUSHIB QOLGAN EDI (BAZAGA SAQLASH)
+        await session.commit() 
+        
         kpis = sum((await session.scalars(select(KPI.amount).where(KPI.employee_id == emp_id, KPI.is_closed == False))).all())
         advances = sum((await session.scalars(select(Advance.amount).where(Advance.employee_id == emp_id, Advance.is_closed == False))).all())
         penalties = sum((await session.scalars(select(Penalty.amount).where(Penalty.employee_id == emp_id, Penalty.is_closed == False))).all())
@@ -188,8 +194,9 @@ async def save_action(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-#  ISHCHILAR MA'LUMOTI VA SHAXSIY PROFIL
-
+# ==========================================
+# 3️⃣ ISHCHILAR MA'LUMOTI VA SHAXSIY PROFIL
+# ==========================================
 @admin_router.message(F.text == "📋 Ishchilar ma'lumoti")
 async def show_employee_list(message: types.Message, state: FSMContext):
     await state.clear()
@@ -238,8 +245,9 @@ async def show_employee_profile(call: types.CallbackQuery):
     await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
-# ISHCHINI BO'SHATISH (CHETLATISH)
-
+# ==========================================
+# 4️⃣ ISHCHINI BO'SHATISH (CHETLATISH)
+# ==========================================
 @admin_router.callback_query(F.data.startswith("fire_"))
 async def fire_prompt(call: types.CallbackQuery):
     emp_id = int(call.data.split("_")[1])
@@ -260,8 +268,9 @@ async def fire_confirm(call: types.CallbackQuery):
     await call.message.edit_text("✅ Xodim ishchilar safidan va bazadan to'liq o'chirildi.")
     await call.answer()
 
-# 5️ UMUMIY VA SHAXSIY EXCEL YUKLASH (Kengaytirilgan kataklar bilan)
-
+# ==========================================
+# 5️⃣ UMUMIY VA SHAXSIY EXCEL YUKLASH 
+# ==========================================
 @admin_router.message(F.text == "📥 Umumiy hisobot")
 async def export_excel_all(message: types.Message):
     await message.answer("⏳ Hisobot tayyorlanmoqda, kuting...")
@@ -312,7 +321,9 @@ async def export_excel_logic(message: types.Message, single_emp_id: int = None):
     file_name = f"Shaxsiy_{single_emp_id}.xlsx" if single_emp_id else f"Umumiy_Hisobot.xlsx"
     await message.answer_document(document=BufferedInputFile(output.read(), filename=file_name))
 
-
+# ==========================================
+# 6️⃣ OYLIK YOPISH VA TARIXGA YOZISH
+# ==========================================
 @admin_router.message(F.text == "📊 Oylik yopish")
 async def close_month_handler(message: types.Message, state: FSMContext):
     await state.clear()
