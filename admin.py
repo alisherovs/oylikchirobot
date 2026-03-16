@@ -2,6 +2,7 @@ import os
 import io
 import logging
 from datetime import datetime
+from typing import Optional
 
 import pandas as pd
 from aiogram import Router, F, types
@@ -540,7 +541,7 @@ async def export_excel_single(call: types.CallbackQuery):
     await call.answer()
 
 
-async def export_excel_logic(message: types.Message, single_emp_id: int | None = None):
+async def export_excel_logic(message: types.Message, single_emp_id: Optional[int] = None):
     report_data = []
 
     async with async_session() as session:
