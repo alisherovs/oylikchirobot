@@ -9,7 +9,7 @@ from sqlalchemy import select, desc
 from database import async_session, Employee, KPI, Advance, Penalty, SalaryHistory
 
 user_router = Router()
-ADMIN_ID = int(os.getenv("ADMIN_ID", "8153822793"))
+ADMIN_ID = int(os.getenv("ADMIN_ID", "1064992756"))
 
 # ADMIN user routerga tushmasin
 user_router.message.filter(F.from_user.id != ADMIN_ID)
