@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import (
     BigInteger,
@@ -28,23 +29,16 @@ class Base(DeclarativeBase):
 class Employee(Base):
     __tablename__ = "employees"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)  # Telegram ID
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     full_name: Mapped[str] = mapped_column(String(100))
     phone: Mapped[str] = mapped_column(String(20))
     role: Mapped[str] = mapped_column(String(50), default="worker")
 
-    # pending / approved / fired
     status: Mapped[str] = mapped_column(String(20), default="pending")
-    # Fix / KPI
-    salary_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    salary_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     base_salary: Mapped[float] = mapped_column(Float, default=0.0)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    kpis: Mapped[list["KPI"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
-    advances: Mapped[list["Advance"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
-    penalties: Mapped[list["Penalty"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
-    salary_history: Mapped[list["SalaryHistory"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
 
 
 class KPI(Base):
@@ -103,12 +97,12 @@ class SalaryHistory(Base):
     total_penalty: Mapped[float] = mapped_column(Float, default=0)
     final_salary: Mapped[float] = mapped_column(Float, default=0)
 
-    month: Mapped[str] = mapped_column(String(10))  # 2026-03
+    month: Mapped[str] = mapped_column(String(10))
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
-    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     is_closed: Mapped[bool] = mapped_column(Boolean, default=False)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
