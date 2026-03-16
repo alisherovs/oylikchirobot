@@ -7,7 +7,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from database import init_db
+from database import init_db, migrate_db
 from admin import admin_router
 from user import user_router
 
@@ -28,9 +28,6 @@ async def main():
 
     logger.info("🤖 Bot ishga tushirilmoqda...")
 
-    await init_db()
-    logger.info("✅ Ma'lumotlar bazasi tayyor.")
-
     bot = Bot(
         token=BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -38,18 +35,22 @@ async def main():
 
     dp = Dispatcher()
 
-    # Routerlar tartibi muhim:
-    # admin_router oldinda tursa admin handlerlar birinchi tekshiriladi
     dp.include_router(admin_router)
     dp.include_router(user_router)
 
     try:
+        logger.info("🗄 Ma'lumotlar bazasi tekshirilmoqda...")
+        await init_db()
+        await migrate_db()
+        logger.info("✅ Ma'lumotlar bazasi tayyor.")
+
         logger.info("🚀 Polling boshlandi...")
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(
             bot,
             allowed_updates=dp.resolve_used_update_types()
         )
+
     except Exception:
         logger.exception("❌ Bot ishlashida kutilmagan xatolik yuz berdi:")
     finally:
