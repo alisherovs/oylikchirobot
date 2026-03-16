@@ -21,7 +21,7 @@ from database import async_session, Employee, KPI, Advance, Penalty, SalaryHisto
 
 logger = logging.getLogger(__name__)
 
-ADMIN_ID = int(os.getenv("ADMIN_ID", "8153822793"))
+ADMIN_ID = int(os.getenv("ADMIN_ID", "1064992756"))
 
 admin_router = Router()
 
