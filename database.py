@@ -19,7 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///company_kpi.db")
 
 engine = create_async_engine(DB_URL, echo=False)
-async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
 
 class Base(DeclarativeBase):
@@ -29,58 +33,91 @@ class Base(DeclarativeBase):
 class Employee(Base):
     __tablename__ = "employees"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    full_name: Mapped[str] = mapped_column(String(100))
-    phone: Mapped[str] = mapped_column(String(20))
-    role: Mapped[str] = mapped_column(String(50), default="worker")
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)  # Telegram ID
+    full_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="worker", nullable=False)
 
-    status: Mapped[str] = mapped_column(String(20), default="pending")
+    # pending / approved / fired
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+
+    # Fix / KPI
     salary_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    base_salary: Mapped[float] = mapped_column(Float, default=0.0)
+    base_salary: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    kpis: Mapped[list["KPI"]] = relationship(
+        "KPI",
+        back_populates="employee",
+        cascade="all, delete-orphan"
+    )
+    advances: Mapped[list["Advance"]] = relationship(
+        "Advance",
+        back_populates="employee",
+        cascade="all, delete-orphan"
+    )
+    penalties: Mapped[list["Penalty"]] = relationship(
+        "Penalty",
+        back_populates="employee",
+        cascade="all, delete-orphan"
+    )
+    salary_history: Mapped[list["SalaryHistory"]] = relationship(
+        "SalaryHistory",
+        back_populates="employee",
+        cascade="all, delete-orphan"
+    )
 
 
 class KPI(Base):
     __tablename__ = "kpi"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id", ondelete="CASCADE"))
-    amount: Mapped[float] = mapped_column(Float, default=0)
-    description: Mapped[str] = mapped_column(String(255))
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    is_closed: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    employee: Mapped["Employee"] = relationship(back_populates="kpis")
+    employee: Mapped["Employee"] = relationship("Employee", back_populates="kpis")
 
 
 class Advance(Base):
     __tablename__ = "advances"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id", ondelete="CASCADE"))
-    amount: Mapped[float] = mapped_column(Float, default=0)
-    description: Mapped[str] = mapped_column(String(255))
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    is_closed: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    employee: Mapped["Employee"] = relationship(back_populates="advances")
+    employee: Mapped["Employee"] = relationship("Employee", back_populates="advances")
 
 
 class Penalty(Base):
     __tablename__ = "penalties"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id", ondelete="CASCADE"))
-    amount: Mapped[float] = mapped_column(Float, default=0)
-    reason: Mapped[str] = mapped_column(String(255))
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    reason: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    is_closed: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    employee: Mapped["Employee"] = relationship(back_populates="penalties")
+    employee: Mapped["Employee"] = relationship("Employee", back_populates="penalties")
 
 
 class SalaryHistory(Base):
@@ -90,23 +127,27 @@ class SalaryHistory(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id", ondelete="CASCADE"))
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
 
-    total_kpi: Mapped[float] = mapped_column(Float, default=0)
-    total_advance: Mapped[float] = mapped_column(Float, default=0)
-    total_penalty: Mapped[float] = mapped_column(Float, default=0)
-    final_salary: Mapped[float] = mapped_column(Float, default=0)
+    total_kpi: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    total_advance: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    total_penalty: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    final_salary: Mapped[float] = mapped_column(Float, default=0, nullable=False)
 
-    month: Mapped[str] = mapped_column(String(10))
-    is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    month: Mapped[str] = mapped_column(String(10), nullable=False)  # 2026-03
+
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
-    is_closed: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    employee: Mapped["Employee"] = relationship(back_populates="salary_history")
+    employee: Mapped["Employee"] = relationship("Employee", back_populates="salary_history")
 
 
 async def init_db():
